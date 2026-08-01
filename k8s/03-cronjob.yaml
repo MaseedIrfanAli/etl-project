@@ -1,0 +1,58 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etl-job
+  namespace: etl
+spec:
+  # Every 30 minutes - matches the freshness SLA defined in etl-config
+  schedule: "*/30 * * * *"
+  concurrencyPolicy: Forbid          # edge case: prevent overlapping runs
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 5
+  startingDeadlineSeconds: 300        # edge case: don't let missed runs pile up
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 900      # kill hung jobs after 15 min
+      template:
+        metadata:
+          labels:
+            app: etl-job
+        spec:
+          restartPolicy: Never
+          serviceAccountName: etl-job-sa
+          containers:
+            - name: etl-job
+              image: <ACR_NAME>.azurecr.io/etl-job:v1
+              imagePullPolicy: Always
+              envFrom:
+                - configMapRef:
+                    name: etl-config
+                - secretRef:
+                    name: etl-secrets
+              resources:
+                requests:
+                  cpu: "250m"
+                  memory: "256Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "512Mi"      # tune based on observed OOM edge cases
+              volumeMounts:
+                - name: secrets-store
+                  mountPath: /mnt/secrets-store
+                  readOnly: true
+                - name: data-input
+                  mountPath: /data/input
+                - name: data-output
+                  mountPath: /data/output
+          volumes:
+            - name: secrets-store
+              csi:
+                driver: secrets-store.csi.k8s.io
+                readOnly: true
+                volumeAttributes:
+                  secretProviderClass: etl-kv-secrets
+            - name: data-input
+              emptyDir: {}
+            - name: data-output
+              emptyDir: {}

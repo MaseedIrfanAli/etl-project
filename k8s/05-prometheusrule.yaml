@@ -1,0 +1,75 @@
+# Requires kube-prometheus-stack installed in the monitoring namespace
+# (creates the PrometheusRule CRD that the Prometheus Operator watches).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: etl-job-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus   # must match the Helm release label Prometheus selects on
+spec:
+  groups:
+    - name: etl-business-metrics
+      rules:
+        - alert: ETLDataFreshnessSLABreach
+          expr: etl_data_freshness_seconds > 1800
+          for: 5m
+          labels:
+            severity: critical
+            team: data-platform
+          annotations:
+            summary: "ETL data freshness SLA breached"
+            description: "Newest processed record is older than the 30-minute SLA."
+
+        - alert: ETLHighFailureRate
+          expr: |
+            (rate(etl_records_failed_total[15m]) /
+             (rate(etl_records_processed_total[15m]) + rate(etl_records_failed_total[15m]) + 0.0001)) > 0.10
+          for: 10m
+          labels:
+            severity: warning
+            team: data-platform
+          annotations:
+            summary: "ETL failure rate above 10%"
+            description: "More than 10% of records are failing to process over the last 15 minutes."
+
+    - name: etl-technical-metrics
+      rules:
+        - alert: ETLJobLastRunFailed
+          expr: etl_job_last_run_success == 0
+          for: 0m
+          labels:
+            severity: critical
+            team: data-platform
+          annotations:
+            summary: "Last ETL job run failed"
+
+        - alert: ETLSchemaDriftDetected
+          expr: etl_schema_drift_detected == 1
+          for: 0m
+          labels:
+            severity: warning
+            team: data-platform
+          annotations:
+            summary: "Schema drift detected in latest ETL run"
+            description: "Source data contained unexpected or missing fields."
+
+        - alert: ETLPodCrashLooping
+          expr: rate(kube_pod_container_status_restarts_total{namespace="etl"}[15m]) > 0
+          for: 5m
+          labels:
+            severity: critical
+            team: platform-ops
+          annotations:
+            summary: "ETL pod is crash-looping"
+
+        - alert: ETLJobStuckOrHung
+          expr: |
+            time() - kube_job_status_start_time{namespace="etl"} > 900
+            and kube_job_status_active{namespace="etl"} > 0
+          for: 0m
+          labels:
+            severity: warning
+            team: data-platform
+          annotations:
+            summary: "ETL job has been running longer than expected (>15m)"

@@ -1,0 +1,8 @@
+[
+  {"id": "1", "timestamp": "2026-08-01T05:50:00Z", "value": 120.5, "region": "east"},
+  {"id": "2", "timestamp": "2026-08-01T05:52:00Z", "value": 98.2, "region": "west"},
+  {"id": "2", "timestamp": "2026-08-01T05:52:00Z", "value": 98.2, "region": "west"},
+  {"id": "3", "timestamp": "not-a-timestamp", "value": 45.0, "region": "north"},
+  {"id": "4", "timestamp": "2026-08-01T05:55:00Z", "value": 200.1, "region": "south", "extra_field": "unexpected"},
+  {"id": "5", "timestamp": "2025-01-01T00:00:00Z", "value": 10.0, "region": "east"}
+]

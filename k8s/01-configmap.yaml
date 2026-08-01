@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: etl-config
+  namespace: etl
+data:
+  PUSHGATEWAY_URL: "prometheus-pushgateway.monitoring:9091"
+  JOB_NAME: "etl_job"
+  SOURCE_PATH: "/data/input/source.json"
+  MAX_RETRIES: "3"
+  SLA_FRESHNESS_SECONDS: "1800"
